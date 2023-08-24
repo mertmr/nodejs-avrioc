@@ -64,7 +64,7 @@ const search = async (req, res) => {
   const query = req.params.query;
   const userId = parseInt(req.params.userId);
 
-  // to determine the friend of a friend, I used a recursive sql query. Also used union, code is much more readable this way
+  // to determine the friend of a friend, I used a recursive sql query. Also used union, code is much more readable this way.
   const friendLevel = 2;
   const sql = `
   -- EXPLAIN QUERY PLAN
@@ -99,8 +99,7 @@ const search = async (req, res) => {
     Users u
     LEFT JOIN RecursiveConnections rc ON u.id = rc.userId
   WHERE
-  u.name >= '${query}'  -- Search for names starting with or after the query
-  AND u.name < '${query}' || '{'  -- Search for names starting with the query
+  u.name like '${query}%'
   LIMIT 20;  -- Limit the number of search results to 20;
   `;
 

@@ -1,6 +1,5 @@
 const sqlite3 = require('sqlite3');
 
-// const db = new sqlite3.Database('./avrioc.db', sqlite3.OPEN_READWRITE, (err) => {
 const db = new sqlite3.Database(':memory:');
 
 const run = (query) => {
