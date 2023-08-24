@@ -1,11 +1,7 @@
 const sqlite3 = require('sqlite3');
 
-const db = new sqlite3.Database('./avrioc.db', sqlite3.OPEN_READWRITE, (err) => {
-  if (err) {
-    console.error(err.message);
-  }
-  console.log('Connected to the user/friend database.');
-});
+// const db = new sqlite3.Database('./avrioc.db', sqlite3.OPEN_READWRITE, (err) => {
+const db = new sqlite3.Database(':memory:');
 
 const run = (query) => {
   return new Promise((resolve, reject) => {
@@ -31,4 +27,18 @@ const all = (query) => {
     });
   });
 }
+
+const allWithParams = (query, params) => {
+  return new Promise((resolve, reject) => {
+    db.run(query, params, (err, results) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(results);
+      }
+    });
+  });
+}
+
 module.exports.all = all;
+module.exports.allWithParams = allWithParams;

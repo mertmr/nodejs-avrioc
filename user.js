@@ -1,58 +1,59 @@
 const db = require('./database');
 
-let countUsers = 0;
 const init = async () => {
-  const countUsers = await db.all(`SELECT count(*) as count from Users;`).then(results => {
-    return results[0].count;
-  });
+  await db.run('CREATE TABLE Users (id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(32));');
+  await db.run('CREATE TABLE Friends (id INTEGER PRIMARY KEY AUTOINCREMENT, userId int, friendId int);');
 
-
-  // await db.all(`CREATE INDEX user_index ON Friends (userId);`);
-  // await db.all(`CREATE INDEX user_id_index ON Users (id);`);
-  // await db.all(`CREATE INDEX user_name_index ON Users (name);`);
-
-      // await db.all(`DROP INDEX user_index;`)
-  // await db.all(`DROP INDEX user_id_index;`)
-  // await db.all(`DROP INDEX user_name_index;`)
-
-  if (countUsers === 0) {
-
-
-    const users = [];
-    const names = ['foo', 'bar', 'baz'];
-    for (i = 0; i < 27000; ++i) {
-      let n = i;
-      let name = '';
-      for (j = 0; j < 3; ++j) {
-        name += names[n % 3];
-        n = Math.floor(n / 3);
-        name += n % 10;
-        n = Math.floor(n / 10);
-      }
-      users.push(name);
+  const users = [];
+  const names = ['foo', 'bar', 'baz'];
+  for (i = 0; i < 27000; ++i) {
+    let n = i;
+    let name = '';
+    for (j = 0; j < 3; ++j) {
+      name += names[n % 3];
+      n = Math.floor(n / 3);
+      name += n % 10;
+      n = Math.floor(n / 10);
     }
-    const friends = users.map(() => []);
-    for (i = 0; i < friends.length; ++i) {
-      const n = 10 + Math.floor(90 * Math.random());
-      const list = [...Array(n)].map(() => Math.floor(friends.length * Math.random()));
-      list.forEach((j) => {
-        if (i === j) {
-          return;
-        }
-        if (friends[i].indexOf(j) >= 0 || friends[j].indexOf(i) >= 0) {
-          return;
-        }
-        friends[i].push(j);
-        friends[j].push(i);
-      });
-    }
-    console.log("Init Users Table...");
-    await Promise.all(users.map((un) => db.run(`INSERT INTO Users (name) VALUES ('${un}');`)));
-    console.log("Init Friends Table...");
-    await Promise.all(friends.map((list, i) => {
-      return Promise.all(list.map((j) => db.run(`INSERT INTO Friends (userId, friendId) VALUES (${i + 1}, ${j + 1});`)));
-    }));
+    users.push(name);
   }
+  const friends = users.map(() => []);
+  for (i = 0; i < friends.length; ++i) {
+    const n = 10 + Math.floor(90 * Math.random());
+    const list = [...Array(n)].map(() => Math.floor(friends.length * Math.random()));
+    list.forEach((j) => {
+      if (i === j) {
+        return;
+      }
+      if (friends[i].indexOf(j) >= 0 || friends[j].indexOf(i) >= 0) {
+        return;
+      }
+      friends[i].push(j);
+      friends[j].push(i);
+    });
+  }
+
+  console.log("Init Users Table...");
+  let placeholders = users.map((name) => '(?)').join(',');
+  let sql = 'INSERT INTO Users(name) VALUES ' + placeholders;
+  await db.allWithParams(sql, users);
+
+  console.log("Init Friends Table...");
+  const valuesToInsert = [];
+  friends.forEach((list, i) => {
+    list.forEach((j) => {
+      valuesToInsert.push(`(${i + 1}, ${j + 1})`);
+    });
+  });
+  const query = `INSERT INTO Friends (userId, friendId) VALUES ${valuesToInsert.join(', ')};`;
+  await db.run(query);
+
+  // create indexes after inserts
+  console.log("Create indexes");
+  await db.all(`CREATE INDEX user_index ON Friends (userId);`);
+  await db.all(`CREATE INDEX user_id_index ON Users (id);`);
+  await db.all(`CREATE INDEX user_name_index ON Users (name);`);
+
   console.log("Ready.");
 }
 
@@ -61,6 +62,7 @@ module.exports.init = init;
 const search = async (req, res) => {
   const query = req.params.query;
   const userId = parseInt(req.params.userId);
+  const friendLevel = 2;
 
   const sql = `
   -- EXPLAIN QUERY PLAN
@@ -84,7 +86,7 @@ const search = async (req, res) => {
       RecursiveConnections rc
       JOIN Friends f ON rc.userId = f.userId
     WHERE
-      rc.connectionLevel < 3
+      rc.connectionLevel < ${friendLevel}
   )
     
   SELECT
@@ -117,6 +119,7 @@ const friend = async (req, res) => {
   const friendId = parseInt(req.params.friendId);
   const userId = parseInt(req.params.userId);
 
+  await db.all(`INSERT INTO Friends (userId, friendId) VALUES (${friendId}, ${userId});`);
   db.all(`INSERT INTO Friends (userId, friendId) VALUES (${userId}, ${friendId});`).then((results) => {
     res.statusCode = 200;
     res.json({
@@ -133,6 +136,7 @@ const unfriend = async (req, res) => {
   const friendId = parseInt(req.params.friendId);
   const userId = parseInt(req.params.userId);
 
+  await db.all(`DELETE FROM Friends WHERE userId = ${friendId} and friendId = ${userId};`);
   db.all(`DELETE FROM Friends WHERE userId = ${userId} and friendId = ${friendId};`).then((results) => {
     res.statusCode = 200;
     res.json({
