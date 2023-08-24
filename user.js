@@ -33,6 +33,7 @@ const init = async () => {
     });
   }
 
+  // changed here to batch insert, it was really slow to start the app everytime I did a change
   console.log("Init Users Table...");
   let placeholders = users.map((name) => '(?)').join(',');
   let sql = 'INSERT INTO Users(name) VALUES ' + placeholders;
@@ -48,7 +49,7 @@ const init = async () => {
   const query = `INSERT INTO Friends (userId, friendId) VALUES ${valuesToInsert.join(', ')};`;
   await db.run(query);
 
-  // create indexes after inserts
+  // create indexes after inserts, it will significantly speed up the search query
   console.log("Create indexes");
   await db.all(`CREATE INDEX user_index ON Friends (userId);`);
   await db.all(`CREATE INDEX user_id_index ON Users (id);`);
@@ -62,8 +63,9 @@ module.exports.init = init;
 const search = async (req, res) => {
   const query = req.params.query;
   const userId = parseInt(req.params.userId);
-  const friendLevel = 2;
 
+  // to determine the friend of a friend, I used a recursive sql query. Also used union, code is much more readable this way
+  const friendLevel = 2;
   const sql = `
   -- EXPLAIN QUERY PLAN
   WITH RecursiveConnections AS (

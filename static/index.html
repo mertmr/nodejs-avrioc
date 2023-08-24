@@ -90,7 +90,7 @@ function RenderUser(container, user) {
   button.addEventListener('click', () => {
     const cmd = (user.connection === 1) ? 'unfriend' : 'friend';
     const userId = document.getElementById('user').value;
-    axios.get(`https://3001-mertmr-nodejsavrioc-flec74wfzxp.ws-us104.gitpod.io/api/${cmd}/${userId}/${user.id}`).then((response) => {
+    axios.get(`http://localhost:3001/api/${cmd}/${userId}/${user.id}`).then((response) => {
       Search();
     });
   });
@@ -120,7 +120,7 @@ function Search() {
   const userId = document.getElementById('user').value;
   const search = document.getElementById('search').value;
 
-  axios.get(`https://3001-mertmr-nodejsavrioc-flec74wfzxp.ws-us104.gitpod.io/api/search/${userId}/${search}`).then((response) => {
+  axios.get(`http://localhost:3001/api/search/${userId}/${search}`).then((response) => {
     Render(response.data);
   }).catch((err) => {
     const div = document.getElementById('results');
